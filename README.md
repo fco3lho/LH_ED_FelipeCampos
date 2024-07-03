@@ -1,84 +1,61 @@
-# Indicium Tech Code Challenge
+## Sequência de desenvolvimento
 
-Code challenge for Software Developer with focus in data projects.
+1. Criação de extratores (tap-postgres e tap-csv) e carregadores (target-jsonl) para a primeira etapa usando o Meltano.
+2. Configuração dos mesmos, transferindo dados entre si manualmente.
+3. Automação no processo de transferência de dados entre extratores e carregadores na primeira etapa, usando um script escrito em Python.
+4. Transformação dos arquivos JSONL gerados na extração para CSV usando Pandas.
+5. Criação de extratores (tap-csv) e carregadores (target-postgres) para a segunda etapa usando o Meltano.
+6. Criação de um banco de dados PostgreSQL vazio na porta 5433 no Docker para o carregamento de dados.
+7. Configuração dos mesmos, transferindo dados entre si manualmente.
+8. Automação no processo de transferência de dados entre extratores e carregadores na segunda etapa, usando um script escrito em Python.
+9. Separando ambientes de desenvolvimento para o Meltano e para o Apache Airflow, pois o Meltano necessita do SQLAlchemy de versões entre 2.0.30 e 3.0.0, e o Apache Airflow necessita do SQLAlchemy de versões 1.4.52 ou inferior, e assim evitando conflitos.
+10. Criando Bash Scripts para execução dos scripts Python do Meltano, que está em ambiente de desenvolvimento diferente.
+11. Criação da DAG separada em duas partes.
+12. Execução da DAG.
 
+## Como executar em distribuições Linux baseadas em Ubuntu
 
-## Context
+1. Entre na pasta do projeto pelo terminal.
 
-At Indicium we have many projects where we develop the whole data pipeline for our client, from extracting data from many data sources to loading this data at its final destination, with this final destination varying from a data warehouse for a Business Intelligency tool to an api for integrating with third party systems.
+2. Possuindo Docker e Docker Compose instalado em sua máquina, execute o comando ```docker compose up -d``` na pasta raíz do projeto para iniciar os bancos de dados PostgreSQL para extração e carregamento de dados.
 
-As a software developer with focus in data projects your mission is to plan, develop, deploy, and maintain a data pipeline.
+3. Entre no diretório destinado ao projeto meltano utilizando o comando ```cd meltano```.
+    1. Dentro desse diretório, crie um ambiente virtual digitando o comando ```python3 -m venv venv```.
+    2. Ative o ambiente virtual digitando o comando ```source venv/bin/activate```.
+    3. Instale as dependências deste ambiente digitando o comando ```pip install -r requirements.txt```.
+    4. Entre na pasta da primeira etapa com o comando ```cd first_step``` e instale as dependências desta etapa com o comando ```meltano install```.
+    5. Faça o mesmo da etapa anterior na pasta da segunda etapa.
+    6. Desative o ambiente virtual com o comando ```deactivate```.
 
+4. Volte a pasta raíz do projeto e entre na pasta destinada ao Apache Airflow com o comando ```cd airflow```.
+    1. Dentro desse diretório, crie um ambiente virtual digitando o comando ```python3 -m venv venv```.
+    2. Ative o ambiente virtual digitando o comando ```source venv/bin/activate```.
+    3. Instale as dependências deste ambiente digitando o comando ```pip install -r requirements.txt```.
+    4. Define o ambiente padrão do Apache Airflow executando o script existente na pasta digitando o comando ```source set_airflow_home.sh```.
+    5. Inicie o servidor do Apache Airflow com o comando ```airflow standalone```. (Após executar esse comando, não será mais possível utilizar este terminal sem que encerre o servidor do Apache Airflow).
 
-## The Challenge
+5. No final da execução de inicialização do servidor do Apache Airflow, será fornecido ao usuário as credenciais de login para acessar o Airflow na porta 8080, como no exemplo abaixo, que o username é <strong>admin</strong> e a senha é <strong>2HMSV2VwuxugkzDK</strong>.
 
-We are going to provide 2 data sources, a PostgreSQL database and a CSV file.
+![Final da execução do comando "airflow standalone"](./docs/airflow_standalone.png)
 
-The CSV file represents details of orders from an ecommerce system.
+6. Agora, vá até o navegador e digite a URL ```http://localhost:8080/```. A página de login do Apache Airflow será mostrada e é possível conectar usando as credenciais recebidas no passo anterior.
 
-The database provided is a sample database provided by microsoft for education purposes called northwind, the only difference is that the **order_detail** table does not exists in this database you are beeing provided with. This order_details table is represented by the CSV file we provide.
+7. Uma lista de DAGs será mostrada, procure a DAG com nome <strong>indicium_dag</strong> e clique nela. (Pode demorar um pouco até que o servidor atualize e a DAG seja mostrada na lista).
 
-Schema of the original Northwind Database: 
+![Lista de DAGs](./docs/dags_list.png)
 
-![image](https://user-images.githubusercontent.com/49417424/105997621-9666b980-608a-11eb-86fd-db6b44ece02a.png)
+8. Para executar a DAG, clique no  botão ao lado do título com nome da DAG.
 
-Your challenge is to build a pipeline that extracts the data everyday from both sources and write the data first to local disk, and second to a PostgreSQL database. For this challenge, the CSV file and the database will be static, but in any real world project, both data sources would be changing constantly.
+![Título com botão para executar DAG](./docs/dag_title_with_button.png)
 
-Its important that all writing steps (writing data from inputs to local filesystem and writing data from local filesystem to PostgreSQL database) are isolated from each other, you shoud be able to run any step without executing the others.
+9. Após isso, você poderá ver sua DAG sendo executada passo por passo na aba de <strong>graph</strong>.
 
-For the first step, where you write data to local disk, you should write one file for each table. This pipeline will run everyday, so there should be a separation in the file paths you will create for each source(CSV or Postgres), table and execution day combination, e.g.:
+![Executando dag](./docs/executing_dag.png)
 
-```
-/data/postgres/{table}/2024-01-01/file.format
-/data/postgres/{table}/2024-01-02/file.format
-/data/csv/2024-01-02/file.format
-```
+10. Quando a DAG for totalmente executada com êxito, será possível ver um arquivo JSON na pasta ```/messages``` localizada no diretório raíz do projeto, contendo a mensagem de sucesso na execução, juntamente com a data e a hora do término da execução.
 
-You are free to chose the naming and the format of the file you are going to save.
+### Quando finalizado, será possível consultar o banco de dados e ver que todas as tabelas foram carregadas. Para isso, siga o passos abaixo:
 
-At step 2, you should load the data from the local filesystem, which you have created, to the final database.
+1. Com os containers dos bancos de dados funcionando, digite o seguinte comando no terminal: ```docker exec -it indicium-test-db_loader-1 psql -U user -d dbloader```. Este comando lhe conectará ao banco de dados para fazer consultas.
 
-The final goal is to be able to run a query that shows the orders and its details. The Orders are placed in a table called **orders** at the postgres Northwind database. The details are placed at the csv file provided, and each line has an **order_id** field pointing the **orders** table.
-
-## Solution Diagram
-
-As Indicium uses some standard tools, the challenge was designed to be done using some of these tools.
-
-The following tools should be used to solve this challenge.
-
-Scheduler:
-- [Airflow](https://airflow.apache.org/docs/apache-airflow/stable/installation/index.html)
-
-Data Loader:
-- [Embulk](https://www.embulk.org) (Java Based)
-**OR**
-- [Meltano](https://docs.meltano.com/?_gl=1*1nu14zf*_gcl_au*MTg2OTE2NDQ4Mi4xNzA2MDM5OTAz) (Python Based)
-
-Database:
-- [PostgreSQL](https://www.postgresql.org/docs/15/index.html)
-
-The solution should be based on the diagrams below:
-![image](docs/diagrama_embulk_meltano.jpg)
-
-
-### Requirements
-
-- You **must** use the tools described above to complete the challenge.
-- All tasks should be idempotent, you should be able to run the pipeline everyday and, in this case where the data is static, the output shold be the same.
-- Step 2 depends on both tasks of step 1, so you should not be able to run step 2 for a day if the tasks from step 1 did not succeed.
-- You should extract all the tables from the source database, it does not matter that you will not use most of them for the final step.
-- You should be able to tell where the pipeline failed clearly, so you know from which step you should rerun the pipeline.
-- You have to provide clear instructions on how to run the whole pipeline. The easier the better.
-- You must provide evidence that the process has been completed successfully, i.e. you must provide a csv or json with the result of the query described above.
-- You should assume that it will run for different days, everyday.
-- Your pipeline should be prepared to run for past days, meaning you should be able to pass an argument to the pipeline with a day from the past, and it should reprocess the data for that day. Since the data for this challenge is static, the only difference for each day of execution will be the output paths.
-
-### Things that Matters
-
-- Clean and organized code.
-- Good decisions at which step (which database, which file format..) and good arguments to back those decisions up.
-- The aim of the challenge is not only to assess technical knowledge in the area, but also the ability to search for information and use it to solve problems with tools that are not necessarily known to the candidate.
-- Point and click tools are not allowed.
-
-
-Thank you for participating!
+2. Faça consultas no banco de dados no seguinte formato: <strong>SELECT * FROM tap_csv.(Nome da tabela);</strong>. Exemplo: ```SELECT * FROM tap_csv.suppliers;```

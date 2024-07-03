@@ -1,0 +1,38 @@
+default_environment: dev
+environments:
+- name: dev
+- name: staging
+- name: prod
+plugins:
+  extractors:
+  - name: tap-postgres
+    variant: meltanolabs
+    pip_url: git+https://github.com/MeltanoLabs/tap-postgres.git
+    config:
+      sqlalchemy_url: postgresql://northwind_user:thewindisblowing@localhost:5432/northwind
+    select:
+    - public-us_states.*
+  - name: tap-csv
+    variant: meltanolabs
+    pip_url: git+https://github.com/MeltanoLabs/tap-csv.git
+    config:
+      files:
+      - entity: order_details
+        file: order_details.csv
+        keys:
+        - order_id
+        - product_id
+        - unit_price
+        - quantity
+        - discount
+        path: ../../data/
+  loaders:
+  - name: target-jsonl
+    variant: andyh1203
+    pip_url: target-jsonl
+    config:
+      custom_name: '2024-07-01'
+      destination_path: 
+        /home/felipecampos/Documents/Repositorys/LH_ED_FelipeCampos/data/csv/order_details/
+project_id: 8d9ac22d-1685-4f92-bd8a-accf5a215593
+version: 1
