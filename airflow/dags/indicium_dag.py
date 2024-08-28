@@ -12,10 +12,10 @@ root_dir = os.path.abspath(os.path.join(airflow_dir, os.pardir))
 
 default_args = {
     'owner': 'airflow',
-    'depends_on_past': False,
     'email_on_failure': False,
     'email_on_retry': False,
-    'retries': 0,  
+    'retries': 0, 
+    'trigger_rule': 'all_success',
 }
 
 def generate_success_json():
@@ -32,26 +32,29 @@ def generate_success_json():
    json.dump(success_info, out_file, indent = 4) 
    out_file.close() 
 
-with DAG ('indicium_dag', 
-          description='DAG to run Meltano steps sequentially',
-          default_args=default_args,
-          start_date = days_ago(1), 
-          schedule_interval = "@daily", 
-          catchup = False) as dag:
-  
+with DAG (
+   dag_id='indicium_dag', 
+   description='DAG to run Meltano steps sequentially',
+   default_args=default_args,
+   start_date = datetime(2024, 8, 28), 
+   schedule_interval = "@daily", 
+   catchup = False
+) as dag:
+
    run_first_step = BashOperator(
-     task_id = "run_first_step",
-     bash_command = f"{root_dir}/meltano/run_first_step.sh {root_dir}/meltano/first_step"
+      task_id = "run_first_step",
+      bash_command = f"{root_dir}/meltano/run_first_step.sh {root_dir}/meltano/first_step"
    )
 
    run_second_step = BashOperator(
-     task_id = "run_second_step",
-     bash_command = f"{root_dir}/meltano/run_second_step.sh {root_dir}/meltano/second_step"
+      task_id = "run_second_step",
+      bash_command = f"{root_dir}/meltano/run_second_step.sh {root_dir}/meltano/second_step"
    )
 
    generate_success_file = PythonOperator(
       task_id = "generate_success_json",
       python_callable = generate_success_json
    )
+
 
 run_first_step >> run_second_step >> generate_success_file
